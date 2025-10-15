@@ -79,12 +79,41 @@ export default function Dashboard() {
   const totalCredit = transactions.reduce((sum, t) =>
     sum + t.lines.reduce((lineSum, line) => lineSum + line.credit, 0), 0);
 
+  const handleExport = () => {
+    // Create CSV content for dashboard summary
+    const csvContent = [
+      ['Dashboard Summary', '', '', ''],
+      ['Metric', 'Amount', 'Count', 'Details'],
+      ['Total Debits', totalDebit.toFixed(2), transactions.length, 'Sum of all debit amounts'],
+      ['Total Credits', totalCredit.toFixed(2), transactions.length, 'Sum of all credit amounts'],
+      ['Net Activity', (totalCredit - totalDebit).toFixed(2), '', 'Credit minus Debit'],
+      ['', '', '', ''],
+      ['Recent Transactions', '', '', ''],
+      ['Date', 'Reference', 'Description', 'Status', 'Total Amount'],
+      ...transactions.map(transaction => [
+        transaction.date,
+        transaction.reference,
+        transaction.description,
+        transaction.status,
+        transaction.lines.reduce((sum, line) => sum + line.debit + line.credit, 0).toFixed(2)
+      ])
+    ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dashboard-summary-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleExport}>
             Export
           </Button>
           <Button asChild size="sm">

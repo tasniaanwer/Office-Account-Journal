@@ -51,15 +51,21 @@ export const NAVIGATION_ITEMS: Array<{
     description: 'Record and manage transactions',
   },
   {
+    title: 'Projects',
+    href: '/projects',
+    icon: 'folder',
+    description: 'Manage accounting projects and initiatives',
+  },
+  {
     title: 'Reports',
     href: '/reports',
     icon: 'file-text',
     description: 'Financial reports and analytics',
   },
   {
-    title: 'Settings',
+    title: 'Application Settings',
     href: '/settings',
     icon: 'settings',
-    description: 'Application configuration',
+    description: 'Application configuration and preferences',
   },
 ];
