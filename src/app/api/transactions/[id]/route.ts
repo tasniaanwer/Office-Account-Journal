@@ -8,7 +8,7 @@ import { eq, and } from 'drizzle-orm';
 // GET /api/transactions/[id] - Get single transaction
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -16,6 +16,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
     const transaction = await db
       .select({
         id: transactions.id,
@@ -29,7 +30,7 @@ export async function GET(
         updatedAt: transactions.updatedAt,
       })
       .from(transactions)
-      .where(eq(transactions.id, params.id))
+      .where(eq(transactions.id, id))
       .limit(1);
 
     if (transaction.length === 0) {
@@ -49,7 +50,7 @@ export async function GET(
 // PUT /api/transactions/[id] - Update transaction
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -59,12 +60,13 @@ export async function PUT(
 
     const body = await request.json();
     const { description, status } = body;
+    const { id } = await params;
 
     // Check if transaction exists
     const existingTransaction = await db
       .select()
       .from(transactions)
-      .where(eq(transactions.id, params.id))
+      .where(eq(transactions.id, id))
       .limit(1);
 
     if (existingTransaction.length === 0) {
@@ -111,7 +113,7 @@ export async function PUT(
     const [updatedTransaction] = await db
       .update(transactions)
       .set(updateData)
-      .where(eq(transactions.id, params.id))
+      .where(eq(transactions.id, id))
       .returning();
 
     return NextResponse.json(updatedTransaction);
@@ -127,7 +129,7 @@ export async function PUT(
 // DELETE /api/transactions/[id] - Delete transaction
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -135,11 +137,13 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     // Check if transaction exists
     const existingTransaction = await db
       .select()
       .from(transactions)
-      .where(eq(transactions.id, params.id))
+      .where(eq(transactions.id, id))
       .limit(1);
 
     if (existingTransaction.length === 0) {
@@ -159,10 +163,10 @@ export async function DELETE(
     // Delete transaction lines first (due to foreign key constraint)
     await db
       .delete(transactionLines)
-      .where(eq(transactionLines.transactionId, params.id));
+      .where(eq(transactionLines.transactionId, id));
 
     // Delete transaction
-    await db.delete(transactions).where(eq(transactions.id, params.id));
+    await db.delete(transactions).where(eq(transactions.id, id));
 
     return NextResponse.json({ message: 'Transaction deleted successfully' });
   } catch (error) {

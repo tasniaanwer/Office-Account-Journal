@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { transactions, transactionLines, accounts } from '@/db/schema';
 import { eq, and, gte, lte, sum, desc, sql } from 'drizzle-orm';
-import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfDay, endOfDay, subMonths } from 'date-fns';
 
 // Income Statement API - Revenue - Expenses = Net Income
 export async function GET(request: NextRequest) {

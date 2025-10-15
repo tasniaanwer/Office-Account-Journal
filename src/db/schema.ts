@@ -1,109 +1,183 @@
-import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
-import { sql } from 'drizzle-orm';
+// Enhanced Database Schema - Main Entry Point
+// This file imports and exports all schema modules for unified access
+// Architecture: Modular design with performance, security, and business logic enhancements
 
-// Account Types enum
-export const accountTypeEnum = text('type', {
-  enum: ['asset', 'liability', 'equity', 'revenue', 'expense'],
-});
+// ============================================================================
+// CORE SCHEMA IMPORTS - Original accounting tables
+// ============================================================================
+export * from './schema/core-schema';
 
-// User Roles enum
-export const userRoleEnum = text('role', {
-  enum: ['admin', 'accountant', 'viewer'],
-});
+// Re-export core tables and types for backward compatibility
+export {
+  users,
+  accounts,
+  transactions,
+  transactionLines,
+  accountingPeriods,
+  accountTypeEnum,
+  userRoleEnum,
+  transactionStatusEnum,
+  type User,
+  type NewUser,
+  type Account,
+  type NewAccount,
+  type Transaction,
+  type NewTransaction,
+  type TransactionLine,
+  type NewTransactionLine,
+  type AccountingPeriod,
+  type NewAccountingPeriod,
+} from './schema/core-schema';
 
-// Transaction Status enum
-export const transactionStatusEnum = text('status', {
-  enum: ['draft', 'posted', 'approved'],
-});
+// ============================================================================
+// PERFORMANCE SCHEMA IMPORTS - Optimization and caching
+// ============================================================================
+export * from './schema/performance-schema';
 
-// Users table
-export const users = sqliteTable('users', {
-  id: text('id').primaryKey(),
-  email: text('email').notNull().unique(),
-  name: text('name').notNull(),
-  role: userRoleEnum.notNull().default('viewer'),
-  passwordHash: text('password_hash').notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+// Export performance enhancement tables
+export {
+  accountBalanceCache,
+  transactionSummaryCache,
+  userActivityCache,
+  queryOptimizationHints,
+  databaseStatistics,
+  cacheInvalidationLog,
+  type AccountBalanceCache,
+  type NewAccountBalanceCache,
+  type TransactionSummaryCache,
+  type NewTransactionSummaryCache,
+  type UserActivityCache,
+  type NewUserActivityCache,
+  type QueryOptimizationHints,
+  type NewQueryOptimizationHints,
+  type DatabaseStatistics,
+  type NewDatabaseStatistics,
+  type CacheInvalidationLog,
+  type NewCacheInvalidationLog,
+} from './schema/performance-schema';
 
-// Accounts table - Chart of Accounts
-export const accounts = sqliteTable('accounts', {
-  id: text('id').primaryKey(),
-  code: text('code').notNull().unique(),
-  name: text('name').notNull(),
-  type: accountTypeEnum.notNull(),
-  parentId: text('parent_id'),
-  description: text('description'),
-  normalBalance: text('normal_balance', { enum: ['debit', 'credit'] }).notNull().default('debit'),
-  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-}, (table) => ({
-  codeIdx: index('accounts_code_idx').on(table.code),
-  nameIdx: index('accounts_name_idx').on(table.name),
-  typeIdx: index('accounts_type_idx').on(table.type),
-  parentIdIdx: index('accounts_parent_id_idx').on(table.parentId),
-}));
+// ============================================================================
+// SECURITY SCHEMA IMPORTS - Audit logging and access control
+// ============================================================================
+export * from './schema/security-schema';
 
-// Transactions table - Journal entries
-export const transactions = sqliteTable('transactions', {
-  id: text('id').primaryKey(),
-  date: integer('date', { mode: 'timestamp' }).notNull(),
-  reference: text('reference').notNull().unique(),
-  description: text('description').notNull(),
-  status: transactionStatusEnum.notNull().default('draft'),
-  createdBy: text('created_by').notNull().references(() => users.id),
-  approvedBy: text('approved_by').references(() => users.id),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-}, (table) => ({
-  dateIdx: index('transactions_date_idx').on(table.date),
-  referenceIdx: index('transactions_reference_idx').on(table.reference),
-  statusIdx: index('transactions_status_idx').on(table.status),
-  createdByIdx: index('transactions_created_by_idx').on(table.createdBy),
-}));
+// Export security enhancement tables
+export {
+  auditLog,
+  userSessions,
+  loginAttempts,
+  permissions,
+  rolePermissions,
+  userPermissions,
+  securityEvents,
+  dataAccessLog,
+  type AuditLog,
+  type NewAuditLog,
+  type UserSessions,
+  type NewUserSessions,
+  type LoginAttempts,
+  type NewLoginAttempts,
+  type Permissions,
+  type NewPermissions,
+  type RolePermissions,
+  type NewRolePermissions,
+  type UserPermissions,
+  type NewUserPermissions,
+  type SecurityEvents,
+  type NewSecurityEvents,
+  type DataAccessLog,
+  type NewDataAccessLog,
+} from './schema/security-schema';
 
-// Transaction Lines table - Individual debit/credit entries
-export const transactionLines = sqliteTable('transaction_lines', {
-  id: text('id').primaryKey(),
-  transactionId: text('transaction_id').notNull().references(() => transactions.id, { onDelete: 'cascade' }),
-  accountId: text('account_id').notNull().references(() => accounts.id),
-  description: text('description'),
-  debit: real('debit').notNull().default(0),
-  credit: real('credit').notNull().default(0),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-}, (table) => ({
-  transactionIdIdx: index('transaction_lines_transaction_id_idx').on(table.transactionId),
-  accountIdIdx: index('transaction_lines_account_id_idx').on(table.accountId),
-}));
+// ============================================================================
+// BUSINESS LOGIC SCHEMA IMPORTS - Validation and reporting
+// ============================================================================
+export * from './schema/business-schema';
 
-// Accounting Periods table
-export const accountingPeriods = sqliteTable('accounting_periods', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  startDate: integer('start_date', { mode: 'timestamp' }).notNull(),
-  endDate: integer('end_date', { mode: 'timestamp' }).notNull(),
-  isClosed: integer('is_closed', { mode: 'boolean' }).notNull().default(false),
-  fiscalYear: integer('fiscal_year').notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-}, (table) => ({
-  fiscalYearIdx: index('accounting_periods_fiscal_year_idx').on(table.fiscalYear),
-  isClosedIdx: index('accounting_periods_is_closed_idx').on(table.isClosed),
-}));
+// Export business logic enhancement tables
+export {
+  trialBalanceValidation,
+  financialReports,
+  accountingPeriodControls,
+  accountReconciliation,
+  backupOperations,
+  recoveryOperations,
+  businessRules,
+  businessRuleExecutions,
+  type TrialBalanceValidation,
+  type NewTrialBalanceValidation,
+  type FinancialReports,
+  type NewFinancialReports,
+  type AccountingPeriodControls,
+  type NewAccountingPeriodControls,
+  type AccountReconciliation,
+  type NewAccountReconciliation,
+  type BackupOperations,
+  type NewBackupOperations,
+  type RecoveryOperations,
+  type NewRecoveryOperations,
+  type BusinessRules,
+  type NewBusinessRules,
+  type BusinessRuleExecutions,
+  type NewBusinessRuleExecutions,
+} from './schema/business-schema';
 
-// Export all schema types
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
+// ============================================================================
+// SCHEMA ORGANIZATION DOCUMENTATION
+// ============================================================================
 
-export type Account = typeof accounts.$inferSelect;
-export type NewAccount = typeof accounts.$inferInsert;
+/**
+ * Database Architecture Overview:
+ *
+ * Core Schema (`./schema/core-schema.ts`):
+ * - users: User management and authentication
+ * - accounts: Chart of accounts (COA)
+ * - transactions: Journal entries and financial transactions
+ * - transactionLines: Individual debit/credit line items
+ * - accountingPeriods: Fiscal period management
+ *
+ * Performance Schema (`./schema/performance-schema.ts`):
+ * - accountBalanceCache: Pre-calculated account balances
+ * - transactionSummaryCache: Dashboard and reporting cache
+ * - userActivityCache: User activity patterns for optimization
+ * - queryOptimizationHints: Query planning optimization
+ * - databaseStatistics: Performance metrics tracking
+ * - cacheInvalidationLog: Cache refresh coordination
+ *
+ * Security Schema (`./schema/security-schema.ts`):
+ * - auditLog: Comprehensive audit trail for all changes
+ * - userSessions: Enhanced session management
+ * - loginAttempts: Brute force protection
+ * - permissions: Granular access control
+ * - rolePermissions: Role-based permissions
+ * - userPermissions: User-specific permission overrides
+ * - securityEvents: Security incident tracking
+ * - dataAccessLog: Compliance data access tracking
+ *
+ * Business Logic Schema (`./schema/business-schema.ts`):
+ * - trialBalanceValidation: Automated balance validation
+ * - financialReports: Generated financial reports storage
+ * - accountingPeriodControls: Enhanced period management
+ * - accountReconciliation: Account reconciliation tracking
+ * - backupOperations: Backup operation monitoring
+ * - recoveryOperations: Recovery operation tracking
+ * - businessRules: Business rules engine
+ * - businessRuleExecutions: Rule execution logging
+ */
 
-export type Transaction = typeof transactions.$inferSelect;
-export type NewTransaction = typeof transactions.$inferInsert;
+// ============================================================================
+// MIGRATION INFORMATION
+// ============================================================================
 
-export type TransactionLine = typeof transactionLines.$inferSelect;
-export type NewTransactionLine = typeof transactionLines.$inferInsert;
-
-export type AccountingPeriod = typeof accountingPeriods.$inferSelect;
-export type NewAccountingPeriod = typeof accountingPeriods.$inferInsert;
+/**
+ * Migration Strategy:
+ *
+ * Phase 1: Core tables exist (current implementation)
+ * Phase 2: Add performance tables (non-breaking)
+ * Phase 3: Add security tables (non-breaking)
+ * Phase 4: Add business logic tables (non-breaking)
+ * Phase 5: Enable features gradually (controlled rollout)
+ *
+ * All new tables are additive and won't affect existing functionality.
+ * Original tables maintain their structure for backward compatibility.
+ */
