@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import { db } from '@/lib/db';
-import { users } from '@/db/schema';
+import { users } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
@@ -64,6 +64,9 @@ export async function POST(request: NextRequest) {
       email: email.toLowerCase().trim(),
       role: userRole as any,
       passwordHash,
+      // Split name into first and last name for profile
+      firstName: name.trim().split(' ')[0] || '',
+      lastName: name.trim().split(' ').slice(1).join(' ') || '',
     };
 
     const [insertedUser] = await db.insert(users).values(newUser).returning();

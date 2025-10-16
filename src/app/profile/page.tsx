@@ -38,19 +38,32 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (session?.user) {
-      setProfile({
-        firstName: session.user.name?.split(' ')[0] || '',
-        lastName: session.user.name?.split(' ')[1] || '',
-        email: session.user.email || '',
-        phone: session.user.phone || '',
-        bio: session.user.bio || '',
-        location: session.user.location || '',
-        website: session.user.website || '',
-        dateOfBirth: session.user.dateOfBirth || '',
-        role: session.user.role || 'user'
-      });
+      fetchProfile();
     }
   }, [session]);
+
+  const fetchProfile = async () => {
+    try {
+      const response = await fetch('/api/user/profile');
+      if (response.ok) {
+        const data = await response.json();
+        const user = data.user;
+        setProfile({
+          firstName: user.firstName || user.name?.split(' ')[0] || '',
+          lastName: user.lastName || user.name?.split(' ')[1] || '',
+          email: user.email || '',
+          phone: user.phone || '',
+          bio: user.bio || '',
+          location: user.location || '',
+          website: user.website || '',
+          dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : '',
+          role: user.role || 'user'
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile:', error);
+    }
+  };
 
   const validateProfile = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -85,14 +98,27 @@ export default function ProfilePage() {
     setSaveMessage('');
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(profile),
+      });
 
-      // Save profile to localStorage (in real app, would call API)
-      localStorage.setItem('userProfile', JSON.stringify(profile));
+      const data = await response.json();
 
-      setSaveMessage('Profile updated successfully!');
-      setTimeout(() => setSaveMessage(''), 3000);
+      if (response.ok) {
+        setSaveMessage('Profile updated successfully!');
+        // Refresh the profile data
+        await fetchProfile();
+        setTimeout(() => setSaveMessage(''), 3000);
+      } else {
+        setSaveMessage(data.error || 'Failed to update profile. Please try again.');
+        setTimeout(() => setSaveMessage(''), 3000);
+      }
     } catch (error) {
+      console.error('Profile update error:', error);
       setSaveMessage('Failed to update profile. Please try again.');
       setTimeout(() => setSaveMessage(''), 3000);
     }
@@ -103,22 +129,42 @@ export default function ProfilePage() {
   const handleSaveSecurity = async () => {
     if (!validateSecurity()) return;
 
+    // If no password change, just return success
+    if (!security.newPassword) {
+      setSaveMessage('No password changes to save.');
+      setTimeout(() => setSaveMessage(''), 3000);
+      return;
+    }
+
     setIsLoading(true);
     setSaveMessage('');
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...profile,
+          currentPassword: security.currentPassword,
+          newPassword: security.newPassword,
+        }),
+      });
 
-      // Handle password change (would call API in real app)
-      if (security.newPassword) {
-        // API call would go here
+      const data = await response.json();
+
+      if (response.ok) {
+        setSaveMessage('Password updated successfully!');
+        setSecurity({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setTimeout(() => setSaveMessage(''), 3000);
+      } else {
+        setSaveMessage(data.error || 'Failed to update password. Please try again.');
+        setTimeout(() => setSaveMessage(''), 3000);
       }
-
-      setSaveMessage('Security settings updated successfully!');
-      setSecurity({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setTimeout(() => setSaveMessage(''), 3000);
     } catch (error) {
-      setSaveMessage('Failed to update security settings. Please try again.');
+      console.error('Password update error:', error);
+      setSaveMessage('Failed to update password. Please try again.');
       setTimeout(() => setSaveMessage(''), 3000);
     }
 
