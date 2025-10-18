@@ -6,6 +6,9 @@ import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === 'development',
+  useSecureCookies: process.env.NODE_ENV === 'production',
   providers: [
     CredentialsProvider({
       name: 'credentials',
@@ -77,5 +80,6 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: '/login',
     signUp: '/register',
+    signOut: '/login', // Redirect to login page after logout
   },
 };

@@ -69,13 +69,14 @@ export async function GET(request: NextRequest) {
         lastTransactionDate: sql<string>`max(${transactions.date})`,
       })
       .from(transactionLines)
-      .leftJoin(transactions, eq(transactionLines.transactionId, transactions.id))
-      .leftJoin(accounts, eq(transactionLines.accountId, accounts.id))
+      .innerJoin(transactions, eq(transactionLines.transactionId, transactions.id))
+      .innerJoin(accounts, eq(transactionLines.accountId, accounts.id))
       .where(and(
         gte(transactions.date, startDate),
         lte(transactions.date, endDate),
         sql`${transactions.status} IN ('posted', 'approved')`,
-        sql`${accounts.type} IN ('revenue', 'expense')`
+        sql`${accounts.type} IN ('revenue', 'expense')`,
+        eq(accounts.isActive, true)
       ))
       .groupBy(transactionLines.accountId, accounts.code, accounts.name, accounts.type, accounts.normalBalance)
       .orderBy(accounts.code);
@@ -118,14 +119,14 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Separate revenue and expenses
+    // Separate revenue and expenses - include all accounts even with zero balances for completeness
     const revenues = Array.from(accountBalances.values())
-      .filter(acc => acc.type === 'revenue' && acc.balance !== 0)
+      .filter(acc => acc.type === 'revenue')
       .sort((a, b) => b.balance - a.balance);
 
     const expenses = Array.from(accountBalances.values())
-      .filter(acc => acc.type === 'expense' && acc.balance !== 0)
-      .sort((a, b) => b.balance - a.balance);
+      .filter(acc => acc.type === 'expense')
+      .sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
 
     // Calculate totals
     const totalRevenue = revenues.reduce((sum, acc) => sum + acc.balance, 0);
@@ -180,13 +181,14 @@ export async function GET(request: NextRequest) {
               credit: sum(transactionLines.credit),
             })
             .from(transactionLines)
-            .leftJoin(transactions, eq(transactionLines.transactionId, transactions.id))
-            .leftJoin(accounts, eq(transactionLines.accountId, accounts.id))
+            .innerJoin(transactions, eq(transactionLines.transactionId, transactions.id))
+            .innerJoin(accounts, eq(transactionLines.accountId, accounts.id))
             .where(and(
               gte(transactions.date, monthStart),
               lte(transactions.date, monthEnd),
               sql`${transactions.status} IN ('posted', 'approved')`,
-              sql`${accounts.type} IN ('revenue', 'expense')`
+              sql`${accounts.type} IN ('revenue', 'expense')`,
+              eq(accounts.isActive, true)
             ))
             .groupBy(accounts.type);
 

@@ -80,11 +80,16 @@ export default function ProfilePage() {
   const validateSecurity = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (security.newPassword && security.newPassword.length < 8) {
-      newErrors.newPassword = 'Password must be at least 8 characters';
-    }
-    if (security.newPassword && security.newPassword !== security.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+    if (security.newPassword) {
+      if (!security.currentPassword) {
+        newErrors.currentPassword = 'Current password is required to change password';
+      }
+      if (security.newPassword.length < 8) {
+        newErrors.newPassword = 'Password must be at least 8 characters';
+      }
+      if (security.newPassword !== security.confirmPassword) {
+        newErrors.confirmPassword = 'Passwords do not match';
+      }
     }
 
     setErrors(newErrors);
@@ -352,7 +357,9 @@ export default function ProfilePage() {
                     type="password"
                     value={security.currentPassword}
                     onChange={(e) => setSecurity({...security, currentPassword: e.target.value})}
+                    className={errors.currentPassword ? 'border-red-500' : ''}
                   />
+                  {errors.currentPassword && <p className="text-sm text-red-500">{errors.currentPassword}</p>}
                 </div>
                 <div>
                   <Label htmlFor="newPassword">New Password</Label>

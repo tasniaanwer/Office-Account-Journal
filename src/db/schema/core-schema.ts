@@ -26,14 +26,6 @@ export const users = sqliteTable('users', {
   name: text('name').notNull(),
   role: userRoleEnum.notNull().default('viewer'),
   passwordHash: text('password_hash').notNull(),
-  // Additional profile fields
-  firstName: text('first_name'),
-  lastName: text('last_name'),
-  phone: text('phone'),
-  bio: text('bio'),
-  location: text('location'),
-  website: text('website'),
-  dateOfBirth: integer('date_of_birth', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => ({

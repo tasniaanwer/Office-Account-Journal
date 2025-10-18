@@ -47,15 +47,15 @@ export async function GET(request: NextRequest) {
         transactionCount: sql<number>`count(*)`.mapWith(Number),
       })
       .from(transactionLines)
-      .leftJoin(transactions, eq(transactionLines.transactionId, transactions.id))
-      .leftJoin(accounts, eq(transactionLines.accountId, accounts.id))
+      .innerJoin(transactions, eq(transactionLines.transactionId, transactions.id))
+      .innerJoin(accounts, eq(transactionLines.accountId, accounts.id))
       .where(and(
         gte(transactions.date, startDate),
         lte(transactions.date, reportDateEnd),
-        sql`${transactions.status} IN ('posted', 'approved')`
+        sql`${transactions.status} IN ('posted', 'approved')`,
+        eq(accounts.isActive, true)
       ))
-      .groupBy(transactionLines.accountId, accounts.code, accounts.name, accounts.type, accounts.normalBalance)
-      .having(sql`(sum(${transactionLines.debit}) - sum(${transactionLines.credit})) != 0`);
+      .groupBy(transactionLines.accountId, accounts.code, accounts.name, accounts.type, accounts.normalBalance);
 
     // Calculate balances for all accounts
     const accountBalances = new Map();
@@ -95,17 +95,17 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Categorize accounts
+    // Categorize accounts - include all accounts even with zero balances for completeness
     const assets = Array.from(accountBalances.values())
-      .filter(acc => acc.type === 'asset' && acc.balance !== 0)
+      .filter(acc => acc.type === 'asset')
       .sort((a, b) => a.code.localeCompare(b.code));
 
     const liabilities = Array.from(accountBalances.values())
-      .filter(acc => acc.type === 'liability' && acc.balance !== 0)
+      .filter(acc => acc.type === 'liability')
       .sort((a, b) => a.code.localeCompare(b.code));
 
     const equity = Array.from(accountBalances.values())
-      .filter(acc => acc.type === 'equity' && acc.balance !== 0)
+      .filter(acc => acc.type === 'equity')
       .sort((a, b) => a.code.localeCompare(b.code));
 
     // Calculate totals

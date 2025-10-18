@@ -14,6 +14,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Initialize database connection
+    if (!db) {
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+    }
+
     const { searchParams } = new URL(request.url);
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
@@ -39,6 +44,27 @@ export async function GET(request: NextRequest) {
       .where(eq(accounts.isActive, true))
       .orderBy(accounts.code);
 
+    // Handle case with no accounts
+    if (!allAccounts || allAccounts.length === 0) {
+      return NextResponse.json({
+        metadata: {
+          reportGenerated: new Date().toISOString(),
+          dateRange: {
+            from: format(startDate, 'yyyy-MM-dd'),
+            to: format(endDate, 'yyyy-MM-dd')
+          },
+          totalAccounts: 0,
+          activeAccounts: 0,
+          inactiveAccounts: 0,
+          totalTransactions: 0,
+          message: 'No accounts found in the system'
+        },
+        balanceSheet: { assets: { total: 0, accounts: [] }, liabilities: { total: 0, accounts: [] }, equity: { total: 0, accounts: [] } },
+        incomeStatement: { revenue: { total: 0, accounts: [] }, expenses: { total: 0, accounts: [] }, netIncome: 0 },
+        analytics: { monthlyTrends: [], topRevenueCategories: [], topExpenseCategories: [], accountTypeDistribution: {} }
+      });
+    }
+
     // 2. Get all transaction data with proper relationships
     const transactionData = await db
       .select({
@@ -62,12 +88,13 @@ export async function GET(request: NextRequest) {
         lineCreatedAt: transactionLines.createdAt,
       })
       .from(transactions)
-      .leftJoin(transactionLines, eq(transactions.id, transactionLines.transactionId))
-      .leftJoin(accounts, eq(transactionLines.accountId, accounts.id))
+      .innerJoin(transactionLines, eq(transactions.id, transactionLines.transactionId))
+      .innerJoin(accounts, eq(transactionLines.accountId, accounts.id))
       .where(and(
         gte(transactions.date, startDate),
         lte(transactions.date, endDate),
-        sql`${transactions.status} IN ('posted', 'approved')` // Include both posted and approved
+        sql`${transactions.status} IN ('posted', 'approved')`, // Include both posted and approved
+        eq(accounts.isActive, true)
       ))
       .orderBy(desc(transactions.date), transactions.reference);
 
@@ -103,10 +130,20 @@ export async function GET(request: NextRequest) {
       account.transactionCount += 1;
     });
 
-    // Calculate net changes and closing balances
+    // Calculate net changes and closing balances using proper accounting rules
     accountBalances.forEach(account => {
-      account.netChange = account.debit - account.credit;
-      account.closingBalance = account.netChange; // For simplicity, assuming zero opening balance
+      // Calculate net change based on account type and normal balance
+      if (account.normalBalance === 'debit') {
+        // For accounts with normal debit balance (Assets, Expenses)
+        account.netChange = account.debit - account.credit;
+      } else {
+        // For accounts with normal credit balance (Liabilities, Equity, Revenue)
+        account.netChange = account.credit - account.debit;
+      }
+
+      // For this report, we assume opening balance of zero
+      // In a real system, you'd fetch opening balances from accounting periods
+      account.closingBalance = account.netChange;
     });
 
     // 4. Generate Financial Statements
@@ -117,15 +154,15 @@ export async function GET(request: NextRequest) {
     const equity = Array.from(accountBalances.values()).filter(acc => acc.type === 'equity');
 
     const totalAssets = assets.reduce((sum, acc) => sum + acc.closingBalance, 0);
-    const totalLiabilities = liabilities.reduce((sum, acc) => sum + Math.abs(acc.closingBalance), 0);
-    const totalEquity = equity.reduce((sum, acc) => sum + Math.abs(acc.closingBalance), 0);
+    const totalLiabilities = liabilities.reduce((sum, acc) => sum + acc.closingBalance, 0);
+    const totalEquity = equity.reduce((sum, acc) => sum + acc.closingBalance, 0);
 
     // Income Statement Calculations
     const revenues = Array.from(accountBalances.values()).filter(acc => acc.type === 'revenue');
     const expenses = Array.from(accountBalances.values()).filter(acc => acc.type === 'expense');
 
-    const totalRevenue = revenues.reduce((sum, acc) => sum + Math.abs(acc.closingBalance), 0);
-    const totalExpenses = expenses.reduce((sum, acc) => sum + acc.closingBalance, 0);
+    const totalRevenue = revenues.reduce((sum, acc) => sum + acc.closingBalance, 0);
+    const totalExpenses = expenses.reduce((sum, acc) => sum + Math.abs(acc.closingBalance), 0);
     const netIncome = totalRevenue - totalExpenses;
 
     // 5. Monthly Analysis for Trends
@@ -142,11 +179,21 @@ export async function GET(request: NextRequest) {
 
       const monthRevenue = monthTransactions
         .filter(row => row.accountType === 'revenue')
-        .reduce((sum, row) => sum + Number(row.lineCredit || 0), 0);
+        .reduce((sum, row) => {
+          // For revenue accounts, credit increases the balance
+          const creditAmount = Number(row.lineCredit || 0);
+          const debitAmount = Number(row.lineDebit || 0);
+          return sum + (creditAmount - debitAmount);
+        }, 0);
 
       const monthExpenses = monthTransactions
         .filter(row => row.accountType === 'expense')
-        .reduce((sum, row) => sum + Number(row.lineDebit || 0), 0);
+        .reduce((sum, row) => {
+          // For expense accounts, debit increases the balance
+          const debitAmount = Number(row.lineDebit || 0);
+          const creditAmount = Number(row.lineCredit || 0);
+          return sum + (debitAmount - creditAmount);
+        }, 0);
 
       const monthProfit = monthRevenue - monthExpenses;
 
@@ -175,8 +222,8 @@ export async function GET(request: NextRequest) {
       .map(acc => ({
         name: acc.name,
         code: acc.code,
-        amount: Math.abs(acc.closingBalance),
-        percentage: totalRevenue > 0 ? (Math.abs(acc.closingBalance) / totalRevenue) * 100 : 0
+        amount: acc.closingBalance, // Revenue accounts already have positive balances
+        percentage: totalRevenue > 0 ? (acc.closingBalance / totalRevenue) * 100 : 0
       }))
       .filter(acc => acc.amount > 0)
       .sort((a, b) => b.amount - a.amount);
@@ -185,8 +232,8 @@ export async function GET(request: NextRequest) {
       .map(acc => ({
         name: acc.name,
         code: acc.code,
-        amount: acc.closingBalance,
-        percentage: totalExpenses > 0 ? (acc.closingBalance / totalExpenses) * 100 : 0
+        amount: Math.abs(acc.closingBalance), // Expense accounts should be positive for display
+        percentage: totalExpenses > 0 ? (Math.abs(acc.closingBalance) / totalExpenses) * 100 : 0
       }))
       .filter(acc => acc.amount > 0)
       .sort((a, b) => b.amount - a.amount);
@@ -257,8 +304,8 @@ export async function GET(request: NextRequest) {
           accounts: liabilities.map(acc => ({
             code: acc.code,
             name: acc.name,
-            balance: Math.abs(acc.closingBalance),
-            percentage: totalLiabilities > 0 ? (Math.abs(acc.closingBalance) / totalLiabilities) * 100 : 0
+            balance: acc.closingBalance,
+            percentage: totalLiabilities > 0 ? (acc.closingBalance / totalLiabilities) * 100 : 0
           })),
           categories: {
             currentLiabilities: liabilities.filter(a => ['2010', '2020', '2030', '2110', '2120'].includes(a.code)),
@@ -270,8 +317,8 @@ export async function GET(request: NextRequest) {
           accounts: equity.map(acc => ({
             code: acc.code,
             name: acc.name,
-            balance: Math.abs(acc.closingBalance),
-            percentage: totalEquity > 0 ? (Math.abs(acc.closingBalance) / totalEquity) * 100 : 0
+            balance: acc.closingBalance,
+            percentage: totalEquity > 0 ? (acc.closingBalance / totalEquity) * 100 : 0
           }))
         },
         validation: {

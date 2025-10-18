@@ -244,10 +244,6 @@ export default function EnhancedReportsPage() {
             onDateRangeChange={handleDateRangeChange}
             onApply={fetchAllReports}
           />
-          <Button variant="outline" size="sm">
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
         </div>
       </div>
 
@@ -499,10 +495,6 @@ export default function EnhancedReportsPage() {
                 <CardDescription>Common financial tasks</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <Download className="mr-2 h-4 w-4" />
-                  Download PDF Report
-                </Button>
                 <Button variant="outline" size="sm" className="w-full justify-start">
                   <Filter className="mr-2 h-4 w-4" />
                   Filter by Date Range

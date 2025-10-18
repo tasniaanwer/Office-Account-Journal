@@ -10,21 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { Bell, Shield, Database, Upload, Download, AlertCircle, CheckCircle, Settings } from 'lucide-react';
+import { Shield, Database, Upload, Download, AlertCircle, CheckCircle, Settings } from 'lucide-react';
 
 export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [exportProgress, setExportProgress] = useState('');
   const [importProgress, setImportProgress] = useState('');
   const [saveMessage, setSaveMessage] = useState('');
-
-  // Notification preferences state
-  const [notifications, setNotifications] = useState({
-    emailNotifications: false,
-    transactionAlerts: false,
-    monthlyReports: false,
-    emailFrequency: 'daily'
-  });
 
   // App preferences state
   const [preferences, setPreferences] = useState({
@@ -40,11 +32,6 @@ export default function SettingsPage() {
     if (savedPrefs) {
       setPreferences(JSON.parse(savedPrefs));
     }
-
-    const savedNotifications = localStorage.getItem('notificationPreferences');
-    if (savedNotifications) {
-      setNotifications(JSON.parse(savedNotifications));
-    }
   }, []);
 
   const handleSave = async (section: string) => {
@@ -54,10 +41,7 @@ export default function SettingsPage() {
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      if (section === 'notifications') {
-        // Save notification preferences
-        localStorage.setItem('notificationPreferences', JSON.stringify(notifications));
-      } else if (section === 'preferences') {
+      if (section === 'preferences') {
         // Save app preferences
         localStorage.setItem('userPreferences', JSON.stringify(preferences));
       }
@@ -233,14 +217,10 @@ export default function SettingsPage() {
       )}
 
       <Tabs defaultValue="preferences" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="preferences" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             Preferences
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center gap-2">
-            <Bell className="h-4 w-4" />
-            Notifications
           </TabsTrigger>
           <TabsTrigger value="security" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
@@ -321,79 +301,6 @@ export default function SettingsPage() {
               </div>
               <Button onClick={() => handleSave('preferences')} disabled={isLoading}>
                 {isLoading ? 'Saving...' : 'Save Preferences'}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
-              <CardDescription>
-                Configure how you receive notifications
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <h4 className="font-medium">Email Notifications</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Receive email updates about your account activity
-                  </p>
-                </div>
-                <Switch
-                  checked={notifications.emailNotifications}
-                  onCheckedChange={(checked) => setNotifications({...notifications, emailNotifications: checked})}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <h4 className="font-medium">Transaction Alerts</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Get notified when transactions are created or updated
-                  </p>
-                </div>
-                <Switch
-                  checked={notifications.transactionAlerts}
-                  onCheckedChange={(checked) => setNotifications({...notifications, transactionAlerts: checked})}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <h4 className="font-medium">Monthly Reports</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Receive monthly financial summaries
-                  </p>
-                </div>
-                <Switch
-                  checked={notifications.monthlyReports}
-                  onCheckedChange={(checked) => setNotifications({...notifications, monthlyReports: checked})}
-                />
-              </div>
-
-              <div className="border-t pt-4">
-                <Label htmlFor="emailFrequency">Email Frequency</Label>
-                <Select
-                  value={notifications.emailFrequency}
-                  onValueChange={(value) => setNotifications({...notifications, emailFrequency: value})}
-                  disabled={!notifications.emailNotifications}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="immediate">Immediate</SelectItem>
-                    <SelectItem value="daily">Daily Digest</SelectItem>
-                    <SelectItem value="weekly">Weekly Summary</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button onClick={() => handleSave('notifications')} disabled={isLoading}>
-                {isLoading ? 'Saving...' : 'Save Notification Settings'}
               </Button>
             </CardContent>
           </Card>

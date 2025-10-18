@@ -32,7 +32,6 @@ import {
   Activity,
   BarChart3,
   PieChart as PieChartIcon,
-  Download,
   Calendar,
   Target,
   Zap,
@@ -163,79 +162,6 @@ export default function Analytics() {
     fetchAnalytics(true);
   };
 
-  const handleExport = () => {
-    if (!data) return;
-
-    // Enhanced CSV export with comprehensive analytics data
-    const csvContent = [
-      ['Analytics Report', '', '', '', `Generated: ${new Date().toLocaleString()}`],
-      ['Period:', data.period.from, 'to', data.period.to, `Type: ${data.period.type}`],
-      ['', '', '', '', ''],
-      ['KEY PERFORMANCE INDICATORS', '', '', '', ''],
-      ['Metric', 'Value', 'Previous Period', 'Change', 'Trend'],
-      ['Total Revenue', data.kpis.totalRevenue.toFixed(2), data.previousPeriod.revenue.toFixed(2), data.quickStats.revenue.change + '%', data.quickStats.revenue.trend],
-      ['Total Expenses', data.kpis.totalExpenses.toFixed(2), data.previousPeriod.expenses.toFixed(2), data.quickStats.expenses.change + '%', data.quickStats.expenses.trend],
-      ['Total Profit', data.kpis.totalProfit.toFixed(2), data.previousPeriod.profit.toFixed(2), data.quickStats.profit.change + '%', data.quickStats.profit.trend],
-      ['Net Cash Flow', data.kpis.netCashFlow.toFixed(2), data.previousPeriod.cashFlow.toFixed(2), data.quickStats.cashFlow.change + '%', data.quickStats.cashFlow.trend],
-      ['Profit Margin', data.kpis.profitMargin + '%', '', '', ''],
-      ['Expense Ratio', data.kpis.expenseRatio + '%', '', '', ''],
-      ['Average Monthly Growth', data.kpis.averageMonthlyGrowth + '%', '', '', ''],
-      ['', '', '', '', ''],
-      ['MONTHLY TRENDS', '', '', '', ''],
-      ['Month', 'Revenue', 'Expenses', 'Profit', 'Date'],
-      ...data.monthlyTrends.map(month => [
-        month.month,
-        month.revenue.toFixed(2),
-        month.expenses.toFixed(2),
-        month.profit.toFixed(2),
-        month.date
-      ]),
-      ['', '', '', '', ''],
-      ['EXPENSE BREAKDOWN', '', '', '', ''],
-      ['Category', 'Amount', 'Percentage', 'Code', ''],
-      ...data.expenseBreakdown.map(expense => [
-        expense.name,
-        expense.value.toFixed(2),
-        expense.percentage + '%',
-        expense.code,
-        ''
-      ]),
-      ['', '', '', '', ''],
-      ['REVENUE SOURCES', '', '', '', ''],
-      ['Source', 'Amount', 'Percentage', 'Code', ''],
-      ...data.revenueSources.map(revenue => [
-        revenue.name,
-        revenue.value.toFixed(2),
-        revenue.percentage + '%',
-        revenue.code,
-        ''
-      ]),
-      ['', '', '', '', ''],
-      ['MONTHLY GROWTH RATES', '', '', '', ''],
-      ['Month', 'Revenue Growth (%)', '', '', ''],
-      ...data.growthMetrics.monthlyGrowthRates.map(growth => [
-        growth.month,
-        growth.revenueGrowth,
-        '', '', ''
-      ]),
-      ['', '', '', '', ''],
-      ['SUMMARY', '', '', '', ''],
-      ['Metric', 'Value', '', '', ''],
-      ['Total Months Analyzed', data.growthMetrics.totalMonths, '', '', ''],
-      ['Average Growth Rate', data.growthMetrics.averageGrowthRate + '%', '', '', ''],
-      ['Total Revenue Sources', data.revenueSources.length, '', '', ''],
-      ['Total Expense Categories', data.expenseBreakdown.length, '', '', '']
-    ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `analytics-${data.period.from}-to-${data.period.to}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
-
   if (loading) {
     return (
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -300,10 +226,6 @@ export default function Analytics() {
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
-          </Button>
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Export
           </Button>
         </div>
       </div>

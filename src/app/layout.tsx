@@ -4,6 +4,7 @@ import "./globals.css";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { AuthProvider } from "@/components/auth/session-provider";
+import { GlobalLogoutShortcut } from "@/components/auth/global-logout-shortcut";
 import { APP_CONFIG } from "@/lib/constants";
 
 const geistSans = Geist({
@@ -39,6 +40,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
+            <GlobalLogoutShortcut />
             <AppSidebar>{children}</AppSidebar>
           </ThemeProvider>
         </AuthProvider>

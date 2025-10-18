@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { users } from '@/lib/db';
+import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -39,28 +39,23 @@ export async function PUT(request: NextRequest) {
     }
 
     const user = currentUser[0];
-    const updateData: any = {
+    const updateData: {
+      updatedAt: Date;
+      name?: string;
+      email?: string;
+      passwordHash?: string;
+    } = {
       updatedAt: new Date(),
     };
 
     // Handle profile information updates
-    if (firstName !== undefined) updateData.firstName = firstName;
-    if (lastName !== undefined) updateData.lastName = lastName;
-    if (email !== undefined) updateData.email = email;
-    if (phone !== undefined) updateData.phone = phone;
-    if (bio !== undefined) updateData.bio = bio;
-    if (location !== undefined) updateData.location = location;
-    if (website !== undefined) updateData.website = website;
-    if (dateOfBirth !== undefined) {
-      updateData.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : null;
-    }
-
-    // Update name field to combine firstName and lastName if either is provided
     if (firstName !== undefined || lastName !== undefined) {
-      const first = firstName || user.firstName || '';
-      const last = lastName || user.lastName || '';
+      // Combine firstName and lastName into the name field
+      const first = firstName || user.name?.split(' ')[0] || '';
+      const last = lastName || user.name?.split(' ').slice(1).join(' ') || '';
       updateData.name = `${first} ${last}`.trim() || user.name;
     }
+    if (email !== undefined) updateData.email = email;
 
     // Handle password change
     if (newPassword) {
@@ -80,7 +75,9 @@ export async function PUT(request: NextRequest) {
       }
 
       // Hash new password
-      updateData.passwordHash = await bcrypt.hash(newPassword, 12);
+      const newPasswordHash = await bcrypt.hash(newPassword, 12);
+      updateData.passwordHash = newPasswordHash;
+      console.log('Password update: New password hash generated for user:', user.email);
     }
 
     // Check if email is being changed and if it's already taken
@@ -96,9 +93,11 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update user in database
+    console.log('Updating user in database with data:', { ...updateData, passwordHash: updateData.passwordHash ? '[REDACTED]' : 'UNCHANGED' });
     await db.update(users)
       .set(updateData)
       .where(eq(users.id, user.id));
+    console.log('Database update completed for user:', user.email);
 
     // Get updated user data (without password hash)
     const updatedUser = await db.select({
@@ -106,13 +105,6 @@ export async function PUT(request: NextRequest) {
       email: users.email,
       name: users.name,
       role: users.role,
-      firstName: users.firstName,
-      lastName: users.lastName,
-      phone: users.phone,
-      bio: users.bio,
-      location: users.location,
-      website: users.website,
-      dateOfBirth: users.dateOfBirth,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
     })
@@ -145,13 +137,6 @@ export async function GET(request: NextRequest) {
       email: users.email,
       name: users.name,
       role: users.role,
-      firstName: users.firstName,
-      lastName: users.lastName,
-      phone: users.phone,
-      bio: users.bio,
-      location: users.location,
-      website: users.website,
-      dateOfBirth: users.dateOfBirth,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
     })
